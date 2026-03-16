@@ -47,7 +47,7 @@ function App() {
     if (!text) return null;
     
     const extract = (raw) => {
-       const regex = new RegExp(`(?:#)?(${raw}):\\s*([\\s\\S]*?)(?=(?:(?:#)?(?:Evento Nome|Evento|Nome do Evento|Nome|Data|Local|Envolvidos|Stakeholders|Relato):)|$)`, 'i');
+       const regex = new RegExp(`(?:#)?(${raw}):\\s*([\\s\\S]*?)(?=(?:(?:#)?(?:Evento Nome|Evento|Nome do Evento|Nome|Data|Local|Envolvidos|Stakeholders|Autoridades participantes|Relato|Resumo):)|$)`, 'i');
        const match = text.match(regex);
        return match ? match[2].trim() : '';
     };
@@ -56,7 +56,7 @@ function App() {
     const data = extract('Data');
     const local = extract('Local');
     const envolvidos = extract('Envolvidos|Stakeholders|Autoridades participantes');
-    const relato = extract('Relato');
+    const relato = extract('Relato|Resumo');
 
     if (!titulo && !data && !local && !envolvidos && !relato) {
         return null;
