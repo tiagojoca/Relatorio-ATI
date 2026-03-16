@@ -47,7 +47,7 @@ function App() {
     if (!text) return null;
     
     const extract = (raw) => {
-       const regex = new RegExp(`(?:#)?(${raw}):\\s*([\\s\\S]*?)(?=(?:(?:#)?(?:Evento Nome|Evento|Nome do Evento|Nome|Data|Local|Envolvidos|Stakeholders|Relato):)|$)`, 'i');
+       const regex = new RegExp(`(?:#)?(${raw}):\\s*([\\s\\S]*?)(?=(?:(?:#)?(?:Evento Nome|Evento|Nome do Evento|Nome|Data|Local|Envolvidos|Stakeholders|Participantes|Relato):)|$)`, 'i');
        const match = text.match(regex);
        return match ? match[2].trim() : '';
     };
@@ -55,7 +55,7 @@ function App() {
     const titulo = extract('Evento Nome|Evento|Nome do Evento|Nome');
     const data = extract('Data');
     const local = extract('Local');
-    const envolvidos = extract('Envolvidos|Stakeholders|Autoridades participantes');
+    const envolvidos = extract('Envolvidos|Stakeholders|Participantes|Autoridades participantes');
     const relato = extract('Relato');
 
     if (!titulo && !data && !local && !envolvidos && !relato) {
@@ -246,7 +246,7 @@ function App() {
           addField('Evento', parsed.titulo); // Fallback caso precisemos, mas já está no título superior
         }
         addField('Resumo', parsed.relato);
-        addField('Stakeholders', parsed.envolvidos);
+        addField('Participantes', parsed.envolvidos);
       } else if (evText) {
         const sanitizeText = (text) => text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F]/g, '');
         const safeValue = sanitizeText(evText);
@@ -733,7 +733,7 @@ function App() {
                         {parsed.data && <p style={{ display: 'block', margin: '1.5rem 0' }}><strong>Data:</strong> {parsed.data}</p>}
                         {parsed.local && <p style={{ display: 'block', margin: '1.5rem 0' }}><strong>Local:</strong> {parsed.local}</p>}
                         {parsed.relato && <p style={{ display: 'block', margin: '1.5rem 0' }}><strong>Resumo:</strong> {parsed.relato}</p>}
-                        {parsed.envolvidos && <p style={{ display: 'block', margin: '1.5rem 0' }}><strong>Stakeholders:</strong> {parsed.envolvidos}</p>}
+                        {parsed.envolvidos && <p style={{ display: 'block', margin: '1.5rem 0' }}><strong>Participantes:</strong> {parsed.envolvidos}</p>}
                       </>
                     ) : (
                       ev.evento ? ev.evento.split('\n').filter(line => line.trim() !== '').map((line, lIdx) => (
