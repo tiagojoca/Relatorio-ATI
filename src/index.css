@@ -192,3 +192,53 @@ body {
   display: flex;
   gap: 0.5rem;
 }
+
+/* Responsividade Mobile */
+@media (max-width: 768px) {
+  .app-container {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .header {
+    padding: 1rem;
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .header h1 {
+    font-size: 1.25rem;
+  }
+
+  .main-content {
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+    overflow: visible;
+  }
+  
+  .editor-panel, .preview-panel {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+  
+  .document-preview {
+    padding: 1.5rem 1rem;
+    font-size: 11pt;
+  }
+  
+  .preview-toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .preview-toolbar .button {
+    width: 100%;
+    margin: 0;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+}
