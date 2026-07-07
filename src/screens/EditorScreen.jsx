@@ -3,7 +3,7 @@ import { FileDown, FileText, Trash2, Edit2, PlusCircle, Check, X, UploadCloud, A
 import { saveAs } from 'file-saver';
 import { exportDocx } from '../lib/docxExport';
 import { parseEventoText, newEventId } from '../lib/relatorioModel';
-import { getRelatorio, saveRelatorioEvents, uploadEventPhotos } from '../firebase/relatorios';
+import { getRelatorio, saveRelatorioEvents, uploadEventPhotos } from '../data/relatorios';
 import '../index.css';
 
 export default function EditorScreen({ monthId, onBack }) {

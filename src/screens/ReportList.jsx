@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FileText, PlusCircle } from 'lucide-react';
-import { listRelatorios, createRelatorio } from '../firebase/relatorios';
+import { listRelatorios, createRelatorio } from '../data/relatorios';
 import { monthIdFromRaw } from '../lib/relatorioModel';
 
 const MESES = [
