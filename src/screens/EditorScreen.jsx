@@ -16,18 +16,27 @@ export default function EditorScreen({ monthId, onBack }) {
   };
   const [currentForm, setCurrentForm] = useState(initialFormState);
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const [loading, setLoading] = useState(true);
 
+  // Carrega o documento do mês. O editor só é renderizado após esta carga
+  // (ver o gate `loading` abaixo), evitando uma corrida em que a resposta do
+  // getRelatorio sobrescreveria eventos já adicionados localmente.
   useEffect(() => {
     let ativo = true;
-    getRelatorio(monthId).then((rel) => {
-      if (!ativo) return;
-      if (rel) {
-        setEvents(rel.events || []);
-        setMesAnoRaw(rel.mesAnoRaw || `${monthId}-01`);
-      } else {
+    getRelatorio(monthId)
+      .then((rel) => {
+        if (!ativo) return;
+        setEvents(rel?.events || []);
+        setMesAnoRaw(rel?.mesAnoRaw || `${monthId}-01`);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!ativo) return;
+        console.error(err);
         setMesAnoRaw(`${monthId}-01`);
-      }
-    });
+        setLoading(false);
+        alert('Erro ao carregar o relatório: ' + err.message);
+      });
     return () => {
       ativo = false;
     };
@@ -62,7 +71,14 @@ export default function EditorScreen({ monthId, onBack }) {
 
   const handleSaveEdit = async () => {
     const evId = currentForm.id || newEventId();
-    const fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
+    let fotoUrls;
+    try {
+      fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao enviar as fotos: ' + err.message);
+      return;
+    }
     const updated = [...events];
     updated[editingIndex] = { ...currentForm, id: evId, fotoUrls, fotoUrl: '' };
     setEvents(updated);
@@ -82,7 +98,14 @@ export default function EditorScreen({ monthId, onBack }) {
       return;
     }
     const evId = newEventId();
-    const fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
+    let fotoUrls;
+    try {
+      fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao enviar as fotos: ' + err.message);
+      return;
+    }
     const novo = { ...currentForm, id: evId, fotoUrls, fotoUrl: '' };
     const updated = [...events, novo];
     setEvents(updated);
@@ -130,20 +153,30 @@ export default function EditorScreen({ monthId, onBack }) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target.result);
-        if (data.events && Array.isArray(data.events)) {
-          setEvents(data.events);
-          if (data.mesAnoRaw) {
-            setMesAnoRaw(data.mesAnoRaw);
-          }
-          alert("Relatório carregado com sucesso!");
-        } else {
-          alert("Arquivo inválido. Nenhum evento encontrado.");
+        if (!data.events || !Array.isArray(data.events)) {
+          alert('Arquivo inválido. Nenhum evento encontrado.');
+          return;
         }
+        setSaveStatus('saving');
+        // Normaliza os eventos importados: garante um id estável e envia ao
+        // Storage as fotos que vierem embutidas (data URLs) no backup, para
+        // não gravar base64 direto no Firestore.
+        const importedEvents = [];
+        for (const ev of data.events) {
+          const evId = ev.id || newEventId();
+          const legacyFotos = ev.fotoUrls || (ev.fotoUrl ? [ev.fotoUrl] : []);
+          const fotoUrls = await uploadEventPhotos(monthId, evId, legacyFotos);
+          importedEvents.push({ ...ev, id: evId, fotoUrls, fotoUrl: '' });
+        }
+        setEvents(importedEvents);
+        await persist(importedEvents);
+        alert('Relatório carregado e salvo com sucesso!');
       } catch (err) {
-        alert("Erro ao ler o arquivo: " + err.message);
+        setSaveStatus('idle');
+        alert('Erro ao carregar o arquivo: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -191,6 +224,17 @@ export default function EditorScreen({ monthId, onBack }) {
       };
     });
   };
+
+  if (loading) {
+    return (
+      <main className="main-content" style={{ display: 'block' }}>
+        <button className="button outline" onClick={onBack}>
+          <ArrowLeft size={18} /> Voltar à lista
+        </button>
+        <div style={{ padding: '2rem', color: '#666' }}>Carregando relatório...</div>
+      </main>
+    );
+  }
 
   return (
       <main className="main-content">
