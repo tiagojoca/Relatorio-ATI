@@ -1,40 +1,50 @@
 import { useState, useEffect } from 'react';
-import { FileDown, FileText, Trash2, Edit2, PlusCircle, Check, X, UploadCloud } from 'lucide-react';
+import { FileDown, FileText, Trash2, Edit2, PlusCircle, Check, X, UploadCloud, ArrowLeft } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { exportDocx } from '../lib/docxExport';
-import { parseEventoText } from '../lib/relatorioModel';
+import { parseEventoText, newEventId } from '../lib/relatorioModel';
+import { getRelatorio, saveRelatorioEvents, uploadEventPhotos } from '../firebase/relatorios';
 import '../index.css';
 
-export default function EditorScreen() {
+export default function EditorScreen({ monthId, onBack }) {
   const [mesAnoRaw, setMesAnoRaw] = useState('2026-03-01');
   const [events, setEvents] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
-  
+
   const initialFormState = {
     data: '', local: '', evento: '', relato: '', envolvidos: '', fotoUrls: []
   };
   const [currentForm, setCurrentForm] = useState(initialFormState);
+  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
 
-  // Load from LocalStorage on mount
   useEffect(() => {
-    const savedEvents = localStorage.getItem('cbmro_events');
-    const savedDate = localStorage.getItem('cbmro_date');
-    if (savedEvents) {
-      try { setEvents(JSON.parse(savedEvents)); } catch (e) { console.error('Error loading events'); }
+    let ativo = true;
+    getRelatorio(monthId).then((rel) => {
+      if (!ativo) return;
+      if (rel) {
+        setEvents(rel.events || []);
+        setMesAnoRaw(rel.mesAnoRaw || `${monthId}-01`);
+      } else {
+        setMesAnoRaw(`${monthId}-01`);
+      }
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [monthId]);
+
+  // Grava o array de eventos inteiro no Firestore (última gravação vence).
+  const persist = async (nextEvents, nextMesAnoRaw = mesAnoRaw) => {
+    setSaveStatus('saving');
+    try {
+      await saveRelatorioEvents(monthId, nextMesAnoRaw, nextEvents);
+      setSaveStatus('saved');
+    } catch (err) {
+      console.error(err);
+      setSaveStatus('idle');
+      alert('Erro ao salvar no banco: ' + err.message);
     }
-    if (savedDate) {
-      setMesAnoRaw(savedDate);
-    }
-  }, []);
-
-  // Save to LocalStorage on change
-  useEffect(() => {
-    localStorage.setItem('cbmro_events', JSON.stringify(events));
-  }, [events]);
-
-  useEffect(() => {
-    localStorage.setItem('cbmro_date', mesAnoRaw);
-  }, [mesAnoRaw]);
+  };
 
   const getFormattedMesAno = () => {
     if (!mesAnoRaw) return 'mês/ano não informado';
@@ -50,12 +60,15 @@ export default function EditorScreen() {
     document.querySelector('.editor-panel').scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
+    const evId = currentForm.id || newEventId();
+    const fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
     const updated = [...events];
-    updated[editingIndex] = currentForm;
+    updated[editingIndex] = { ...currentForm, id: evId, fotoUrls, fotoUrl: '' };
     setEvents(updated);
     setEditingIndex(null);
     setCurrentForm(initialFormState);
+    await persist(updated);
   };
 
   const handleCancelEdit = () => {
@@ -63,33 +76,41 @@ export default function EditorScreen() {
     setCurrentForm(initialFormState);
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!currentForm.evento && !currentForm.relato) {
-       alert("Preencha o Nome ou Relato do evento.");
-       return;
+      alert('Preencha o Nome ou Relato do evento.');
+      return;
     }
-    setEvents([...events, currentForm]);
+    const evId = newEventId();
+    const fotoUrls = await uploadEventPhotos(monthId, evId, currentForm.fotoUrls || []);
+    const novo = { ...currentForm, id: evId, fotoUrls, fotoUrl: '' };
+    const updated = [...events, novo];
+    setEvents(updated);
     setCurrentForm(initialFormState);
+    await persist(updated);
     setTimeout(() => {
-       const panel = document.querySelector('.editor-panel');
-       panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
+      const panel = document.querySelector('.editor-panel');
+      if (panel) panel.scrollTo({ top: panel.scrollHeight, behavior: 'smooth' });
     }, 100);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
     if (window.confirm('Tem certeza que deseja remover este evento?')) {
-      setEvents(events.filter((_, i) => i !== index));
+      const updated = events.filter((_, i) => i !== index);
+      setEvents(updated);
       if (editingIndex === index) {
-         handleCancelEdit();
+        handleCancelEdit();
       }
+      await persist(updated);
     }
   };
 
-  const clearAllData = () => {
-    if (window.confirm('CUIDADO: Isso apagará TODOS os eventos atuais. Deseja iniciar um novo relatório do zero?')) {
+  const clearAllData = async () => {
+    if (window.confirm('CUIDADO: Isso apagará TODOS os eventos deste relatório. Deseja continuar?')) {
       setEvents([]);
       setCurrentForm(initialFormState);
       setEditingIndex(null);
+      await persist([]);
     }
   };
 
@@ -173,30 +194,15 @@ export default function EditorScreen() {
 
   return (
       <main className="main-content">
+        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
+          <button className="button outline" onClick={onBack}>
+            <ArrowLeft size={18} /> Voltar à lista
+          </button>
+          <span style={{ fontSize: '0.85rem', color: '#666' }}>
+            {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'saved' ? 'Salvo ✓' : ''}
+          </span>
+        </div>
         <section className="editor-panel">
-          
-          <div className="card">
-            <h2 className="card-title">Configurações Gerais</h2>
-            <div className="form-group">
-              <label>Mês/Ano Referência</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input 
-                  type="month"
-                  className="input" 
-                  value={mesAnoRaw.substring(0, 7)} 
-                  onChange={e => setMesAnoRaw(e.target.value)} 
-                />
-                <button 
-                  className="button outline" 
-                  onClick={() => setMesAnoRaw('')}
-                  title="Limpar Seletor"
-                  style={{ padding: '0.6rem 0.8rem' }}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-          </div>
 
           <div className="card" style={{ borderTopColor: editingIndex !== null ? '#ffc107' : '#28a745' }}>
             <h2 className="card-title">

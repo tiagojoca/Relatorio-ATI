@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { onAuthChange, logout } from './firebase/auth';
 import LockScreen from './screens/LockScreen';
 import EditorScreen from './screens/EditorScreen';
+import ReportList from './screens/ReportList';
 import './index.css';
 
 function App() {
   const [authStatus, setAuthStatus] = useState('loading');
+  const [view, setView] = useState({ screen: 'list' });
 
   useEffect(() => onAuthChange((user) => setAuthStatus(user ? 'in' : 'out')), []);
 
@@ -29,7 +31,11 @@ function App() {
           Sair
         </button>
       </header>
-      <EditorScreen />
+      {view.screen === 'list' ? (
+        <ReportList onOpen={(monthId) => setView({ screen: 'editor', monthId })} />
+      ) : (
+        <EditorScreen monthId={view.monthId} onBack={() => setView({ screen: 'list' })} />
+      )}
     </div>
   );
 }
