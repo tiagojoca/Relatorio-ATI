@@ -93,6 +93,8 @@ export async function exportDocx({ events, mesAnoFormatted }) {
       if (parsed) {
         const addField = (label, value) => {
           if (!value) return;
+          // Remove caracteres de controle que invalidariam o XML do DOCX.
+          // eslint-disable-next-line no-control-regex
           const sanitizeText = (text) => text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F]/g, '');
           const safeValue = sanitizeText(value);
           const lines = safeValue.split('\n');
@@ -124,6 +126,8 @@ export async function exportDocx({ events, mesAnoFormatted }) {
         addField('Resumo', parsed.relato);
         addField('Participantes', parsed.envolvidos);
       } else if (evText) {
+        // Remove caracteres de controle que invalidariam o XML do DOCX.
+        // eslint-disable-next-line no-control-regex
         const sanitizeText = (text) => text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F]/g, '');
         const safeValue = sanitizeText(evText);
         const lines = safeValue.split('\n').filter((line) => line.trim() !== '');
