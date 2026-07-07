@@ -25,3 +25,29 @@ export function separatePhotos(fotoUrls = []) {
 export function newEventId() {
   return crypto.randomUUID();
 }
+
+// Extrai campos rotulados (Evento/Data/Local/Envolvidos/Relato) de um bloco
+// de texto livre. Usado pela UI e pela exportação DOCX.
+export function parseEventoText(text) {
+  if (!text) return null;
+
+  const extract = (raw) => {
+    const regex = new RegExp(
+      `(?:#)?(${raw}):\\s*([\\s\\S]*?)(?=(?:(?:#)?(?:Evento Nome|Evento|Nome do Evento|Nome|Data|Local|Envolvidos|Stakeholders|Participantes|Relato):)|$)`,
+      'i',
+    );
+    const match = text.match(regex);
+    return match ? match[2].trim() : '';
+  };
+
+  const titulo = extract('Evento Nome|Evento|Nome do Evento|Nome');
+  const data = extract('Data');
+  const local = extract('Local');
+  const envolvidos = extract('Envolvidos|Stakeholders|Participantes|Autoridades participantes');
+  const relato = extract('Relato');
+
+  if (!titulo && !data && !local && !envolvidos && !relato) {
+    return null;
+  }
+  return { titulo, data, local, envolvidos, relato };
+}
