@@ -1,5 +1,11 @@
 # Configuração do Firebase
 
+> **Status:** o app usa **localStorage** por padrão; o backend Firebase está
+> **dormente**. Este guia é para quando você decidir ligá-lo. Depois de concluir
+> os passos abaixo, troque a reexportação em `src/data/relatorios.js` de
+> `../localdb/relatorios` para `../firebase/relatorios` e religue a tela de login
+> (`LockScreen`) em `src/App.jsx`.
+
 Passos a fazer uma única vez no [Firebase Console](https://console.firebase.google.com).
 
 ## 1. Criar o projeto
